@@ -1,6 +1,6 @@
 import pgPromise, {IInitOptions, IDatabase, IMain} from 'pg-promise'
-import Inventory from './controllers/inventory'
-import Orders from './controllers/orders'
+import Inventory from './model/db/inventory'
+import Orders from './model/db/orders'
 
 const {DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME} = process.env
 
