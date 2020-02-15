@@ -4,41 +4,16 @@ const {
   clearInventory,
   initStockedInventory,
   formatMonetaryDecimal,
-  sortByID,
-  containsSameProducts,
+  containsSameElements,
   mockInventory,
   mockID,
 } = require('./utils')
 
 describe('/inventories', () => {
-  beforeEach(async () => {
-    await clearOrders()
-    await clearInventory()
-  })
-
   describe('GET', () => {
-    describe('when inventory stocked', () => {
-      beforeEach(() => {
-        initStockedInventory(mockInventory)
-      })
-
-      it('returns array of products', done => {
-        request
-          .get('/inventories')
-          .expect('Content-Type', /json/)
-          .expect(res => {
-            res.body = res.body.sort(sortByID)
-          })
-          .expect(
-            containsSameProducts(
-              mockInventory.map(product => ({
-                ...product,
-                price: formatMonetaryDecimal(product.price),
-              })),
-            ),
-          )
-          .expect(200, done)
-      })
+    beforeEach(async () => {
+      await clearOrders()
+      return clearInventory()
     })
 
     describe('when inventory is empty', () => {
@@ -49,17 +24,35 @@ describe('/inventories', () => {
           .expect(200, [], done)
       })
     })
+
+    describe('when inventory stocked', () => {
+      beforeEach(() => initStockedInventory(mockInventory))
+
+      it('returns array of products', done => {
+        request
+          .get('/inventories')
+          .expect('Content-Type', /json/)
+          .expect(
+            containsSameElements(
+              mockInventory.map(product => ({
+                ...product,
+                price: formatMonetaryDecimal(product.price),
+              })),
+            ),
+          )
+          .expect(200, done)
+      })
+    })
   })
 
   describe('POST', () => {
     beforeEach(async () => {
       await clearOrders()
-      await clearInventory()
+      return clearInventory()
     })
 
     describe('when passed valid params', () => {
       const newItem = {
-        id: 1,
         name: 'Test name',
         description: 'Test desc',
         price: 40.52,
@@ -115,14 +108,12 @@ describe('/inventories', () => {
 describe('/inventories/:id', () => {
   beforeEach(async () => {
     await clearOrders()
-    await clearInventory()
+    return clearInventory()
   })
 
   describe('GET', () => {
     describe('when item exists', () => {
-      beforeEach(() => {
-        initStockedInventory(mockInventory)
-      })
+      beforeEach(() => initStockedInventory(mockInventory))
 
       it('returns item details', done => {
         request
@@ -142,9 +133,7 @@ describe('/inventories/:id', () => {
 
   describe('DELETE', () => {
     describe('when item exists', () => {
-      beforeEach(() => {
-        initStockedInventory(mockInventory)
-      })
+      beforeEach(() => initStockedInventory(mockInventory))
 
       it('removes item from db', done => {
         request
@@ -159,9 +148,7 @@ describe('/inventories/:id', () => {
 
   describe('PUT', () => {
     describe('when item exists', () => {
-      beforeEach(() => {
-        initStockedInventory(mockInventory)
-      })
+      beforeEach(() => initStockedInventory(mockInventory))
 
       it('updates item', done => {
         const updatedItemDetails = {

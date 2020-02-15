@@ -2,20 +2,43 @@ const {db} = require('../dist/db')
 
 const clearOrders = async () => {
   await db.none('DELETE FROM order_quantities;')
-  await db.none('DELETE FROM orders;')
+  return db.none('DELETE FROM orders;')
 }
 
-const clearInventory = async () => {
-  await db.none('DELETE FROM inventory;')
-}
+const clearInventory = () => db.none('DELETE FROM inventory;')
 
-const initStockedInventory = async products => {
-  await Promise.all(
+const initStockedInventory = products =>
+  Promise.all(
     products.map(({id, name, price, description, quantity}) =>
       db.none(
         `INSERT INTO inventory (id, name, price, description, quantity)
           VALUES ($1, $2, $3, $4, $5);`,
         [id, name, price, description, quantity],
+      ),
+    ),
+  )
+
+const initOrders = async orders => {
+  await Promise.all(
+    orders.map(({id, email, status}) =>
+      db.none(
+        `INSERT INTO orders (id, email, status)
+          VALUES ($1, $2, $3);`,
+        [id, email, status],
+      ),
+    ),
+  )
+
+  return Promise.all(
+    orders.map(({id, products}) =>
+      Promise.all(
+        products.map(([product_id, quantity]) =>
+          db.none(
+            `INSERT INTO order_quantities (order_id, product_id, quantity)
+            VALUES ($1, $2, $3);`,
+            [id, product_id, quantity],
+          ),
+        ),
       ),
     ),
   )
@@ -25,9 +48,9 @@ const formatMonetaryDecimal = num => String(num.toFixed(2))
 
 const sortByID = (a, b) => a.id > b.id
 
-const containsSameProducts = arr => res =>
+const containsSameElements = arr => res =>
   res.body.length === arr.length &&
-  res.body.every(product => arr.includes(product))
+  res.body.every(el => arr.includes(el))
 
 const mockInventory = [
   {
@@ -35,7 +58,7 @@ const mockInventory = [
     name: 'Item 1',
     description: 'Desc',
     price: 20,
-    quantity: 10,
+    quantity: 130,
   },
   {
     id: 2,
@@ -46,15 +69,38 @@ const mockInventory = [
   },
 ]
 
+const mockDate = '2020-02-15T02:41:46.168Z'
+
+const mockOrders = [
+  {
+    id: 1,
+    email: 'test1@mail.com',
+    products: [
+      [1, 8],
+      [2, 4],
+    ],
+    status: 'COMPLETE',
+  },
+  {
+    id: 2,
+    email: 'test2@mail.com',
+    products: [[2, 3]],
+    status: 'IN_PROGRESS',
+  },
+]
+
 const mockID = 'testid'
 
 module.exports = {
   clearOrders,
   clearInventory,
   initStockedInventory,
+  initOrders,
   formatMonetaryDecimal,
   sortByID,
-  containsSameProducts,
+  containsSameElements,
   mockInventory,
+  mockDate,
+  mockOrders,
   mockID,
 }
