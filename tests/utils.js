@@ -25,6 +25,10 @@ const formatMonetaryDecimal = num => String(num.toFixed(2))
 
 const sortByID = (a, b) => a.id > b.id
 
+const containsSameProducts = arr => res =>
+  res.body.length === arr.length &&
+  res.body.every(product => arr.includes(product))
+
 const mockInventory = [
   {
     id: 1,
@@ -42,11 +46,15 @@ const mockInventory = [
   },
 ]
 
+const mockID = 'testid'
+
 module.exports = {
   clearOrders,
   clearInventory,
   initStockedInventory,
   formatMonetaryDecimal,
   sortByID,
+  containsSameProducts,
   mockInventory,
+  mockID,
 }

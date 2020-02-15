@@ -5,20 +5,18 @@ const {
   initStockedInventory,
   formatMonetaryDecimal,
   sortByID,
+  containsSameProducts,
   mockInventory,
+  mockID,
 } = require('./utils')
 
-const containsSameProducts = arr => res =>
-  res.body.length === arr.length &&
-  res.body.every(product => arr.includes(product))
-
 describe('/inventories', () => {
-  describe('GET', () => {
-    beforeEach(async () => {
-      await clearOrders()
-      await clearInventory()
-    })
+  beforeEach(async () => {
+    await clearOrders()
+    await clearInventory()
+  })
 
+  describe('GET', () => {
     describe('when inventory stocked', () => {
       beforeEach(() => {
         initStockedInventory(mockInventory)
@@ -68,19 +66,132 @@ describe('/inventories', () => {
         quantity: 42,
       }
 
-      it('returns new item with ID', done => {
+      it('returns created item', done => {
         request
           .post('/inventories')
           .send(newItem)
           .expect('Content-Type', /json/)
+          .expect(res => {
+            res.body.id = mockID
+          })
           .expect(
             201,
             {
               ...newItem,
+              id: mockID,
               price: formatMonetaryDecimal(newItem.price),
             },
             done,
           )
+      })
+
+      it('inserts item into inventory db', async done => {
+        request
+          .post('/inventories')
+          .send(newItem)
+          .expect('Content-Type', /json/)
+          .expect(201)
+          .then(res => {
+            const createdID = res.body.id
+
+            request
+              .get(`/inventories/${createdID}`)
+              .expect('Content-Type', /json/)
+              .expect(
+                200,
+                {
+                  ...newItem,
+                  id: createdID,
+                  price: formatMonetaryDecimal(newItem.price),
+                },
+                done,
+              )
+          })
+      })
+    })
+  })
+})
+
+describe('/inventories/:id', () => {
+  beforeEach(async () => {
+    await clearOrders()
+    await clearInventory()
+  })
+
+  describe('GET', () => {
+    describe('when item exists', () => {
+      beforeEach(() => {
+        initStockedInventory(mockInventory)
+      })
+
+      it('returns item details', done => {
+        request
+          .get('/inventories/1')
+          .expect('Content-Type', /json/)
+          .expect(
+            200,
+            {
+              ...mockInventory[0],
+              price: formatMonetaryDecimal(mockInventory[0].price),
+            },
+            done,
+          )
+      })
+    })
+  })
+
+  describe('DELETE', () => {
+    describe('when item exists', () => {
+      beforeEach(() => {
+        initStockedInventory(mockInventory)
+      })
+
+      it('removes item from db', done => {
+        request
+          .delete('/inventories/1')
+          .expect(200)
+          .then(() => {
+            request.get('/inventories/1').expect(500, done)
+          })
+      })
+    })
+  })
+
+  describe('PUT', () => {
+    describe('when item exists', () => {
+      beforeEach(() => {
+        initStockedInventory(mockInventory)
+      })
+
+      it('updates item', done => {
+        const updatedItemDetails = {
+          name: 'New name',
+          description: 'New desc',
+          price: 99,
+          quantity: 99,
+        }
+
+        request
+          .put('/inventories/1')
+          .send(updatedItemDetails)
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then(() => {
+            request
+              .get('/inventories/1')
+              .expect('Content-Type', /json/)
+              .expect(
+                200,
+                {
+                  ...updatedItemDetails,
+                  id: 1,
+                  price: formatMonetaryDecimal(
+                    updatedItemDetails.price,
+                  ),
+                },
+                done,
+              )
+          })
       })
     })
   })
