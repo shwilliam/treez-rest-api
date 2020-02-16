@@ -10,8 +10,7 @@
     "dev": "nodemon dist/index.js",
     "build": "tsc",
     "build:watch": "tsc -w",
-    "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test": "jest --verbose --detectOpenHandles"
   },
   "repository": {
     "type": "git",
