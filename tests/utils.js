@@ -9,12 +9,13 @@ const clearInventory = () => db.none('DELETE FROM inventory;')
 
 const initStockedInventory = products =>
   Promise.all(
-    products.map(({id, name, price, description, quantity_remaining}) =>
-      db.none(
-        `INSERT INTO inventory (id, name, price, description, quantity_remaining)
+    products.map(
+      ({id, name, price, description, quantity_remaining}) =>
+        db.none(
+          `INSERT INTO inventory (id, name, price, description, quantity_remaining)
           VALUES ($1, $2, $3, $4, $5);`,
-        [id, name, price, description, quantity_remaining],
-      ),
+          [id, name, price, description, quantity_remaining],
+        ),
     ),
   )
 
@@ -45,8 +46,6 @@ const initOrders = async orders => {
 }
 
 const formatMonetaryDecimal = num => String(num.toFixed(2))
-
-const sortByID = (a, b) => a.id > b.id
 
 const containsSameElements = arr => res =>
   res.body.length === arr.length &&
@@ -85,6 +84,12 @@ const mockOrders = [
     products: [[2, 3]],
     status: 'IN_PROGRESS',
   },
+  {
+    id: 3,
+    email: 'test3@mail.com',
+    products: [[2, 2]],
+    status: 'CANCELLED',
+  },
 ]
 
 const mockOrderProducts = [
@@ -112,7 +117,6 @@ module.exports = {
   initStockedInventory,
   initOrders,
   formatMonetaryDecimal,
-  sortByID,
   containsSameElements,
   mockInventory,
   mockDate,

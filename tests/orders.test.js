@@ -4,7 +4,6 @@ const {
   clearInventory,
   initStockedInventory,
   initOrders,
-  sortByID,
   containsSameElements,
   mockInventory,
   mockOrders,
@@ -12,6 +11,7 @@ const {
   mockID,
   mockDate,
 } = require('./utils')
+const {db} = require('../dist/db')
 
 describe('/orders', () => {
   describe('GET', () => {
@@ -28,9 +28,6 @@ describe('/orders', () => {
         request
           .get('/orders')
           .expect('Content-Type', /json/)
-          .expect(res => {
-            res.body = res.body.sort(sortByID)
-          })
           .expect(containsSameElements(mockOrders))
           .expect(200, done)
       })
@@ -82,27 +79,35 @@ describe('/orders', () => {
           .send(newOrder)
           .expect('Content-Type', /json/)
           .expect(201)
-          .then(res => {
+          .then(async res => {
             const createdID = res.body.id
-            const createdDate = res.body.date
+            const orderRes = await db.orders.find(createdID)
+            expect(orderRes).toBeDefined()
+            done()
+          })
+      })
 
-            request
-              .get(`/orders/${createdID}`)
-              .expect('Content-Type', /json/)
-              .expect(res => {
-                res.body.products = mockOrderProducts
-              })
-              .expect(
-                200,
-                {
-                  id: createdID,
-                  email: newOrder.email,
-                  date: createdDate,
-                  status: 'IN_PROGRESS',
-                  products: mockOrderProducts,
-                },
-                done,
-              )
+      it('updates inventory quantities', async done => {
+        const inventoryItemBeforeUpdate = await db.inventory.find(1)
+        const quantityIncrease = JSON.parse(newOrder.products)[0][1]
+
+        request
+          .post('/orders')
+          .send(newOrder)
+          .expect('Content-Type', /json/)
+          .expect(201)
+          .then(async () => {
+            const inventoryItemAfterUpdate = await db.inventory.find(
+              1,
+            )
+
+            expect(
+              inventoryItemAfterUpdate.quantity_remaining,
+            ).toEqual(
+              inventoryItemBeforeUpdate.quantity_remaining -
+                quantityIncrease,
+            )
+            done()
           })
       })
     })
@@ -147,12 +152,14 @@ describe('/orders/:id', () => {
     describe('when order exists', () => {
       beforeEach(() => initOrders(mockOrders))
 
-      it('removes order from db', done => {
+      it('removes order from db', async done => {
         request
           .delete('/orders/1')
           .expect(200)
-          .then(() => {
-            request.get('/orders/1').expect(200, null, done)
+          .then(async () => {
+            const order = await db.orders.find(1)
+            expect(order).toBeNull()
+            done()
           })
       })
     })
@@ -172,37 +179,86 @@ describe('/orders/:id', () => {
           .send(updatedOrderDetails)
           .expect('Content-Type', /json/)
           .expect(200)
-          .then(() => {
-            request
-              .get('/orders/1')
-              .expect('Content-Type', /json/)
-              .expect(res => {
-                res.body.date = mockDate
-                res.body.products = mockOrderProducts
-              })
-              .expect(
-                200,
-                {
-                  id: mockOrders[0].id,
-                  email: updatedOrderDetails.email,
-                  date: mockDate,
-                  status: mockOrders[0].status,
-                  products: mockOrderProducts,
-                },
-                done,
-              )
+          .then(async () => {
+            const updatedOrder = await db.orders.find(1)
+
+            expect({
+              ...updatedOrder,
+              date: mockDate,
+              products: mockOrderProducts,
+            }).toEqual({
+              id: mockOrders[0].id,
+              email: updatedOrderDetails.email,
+              date: mockDate,
+              status: mockOrders[0].status,
+              products: mockOrderProducts,
+            })
+
+            done()
           })
       })
-
-      it('updates new product quantities', () => {})
     })
 
     describe('when cancelling order', () => {
-      it('updates order status and inventory', () => {})
+      beforeEach(() => initOrders(mockOrders))
+
+      it('restores inventory stock', async done => {
+        const inventoryItemBeforeUpdate = await db.inventory.find(2)
+        const orderQuantity = 3
+        const updatedOrderDetails = {
+          status: 'CANCELLED',
+        }
+
+        request
+          .put('/orders/2')
+          .send(updatedOrderDetails)
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then(async () => {
+            const inventoryItemAfterUpdate = await db.inventory.find(
+              2,
+            )
+
+            expect(
+              inventoryItemBeforeUpdate.quantity_remaining,
+            ).toEqual(
+              inventoryItemAfterUpdate.quantity_remaining -
+                orderQuantity,
+            )
+
+            done()
+          })
+      })
     })
 
     describe('when resuming order', () => {
-      it('updates order status and inventory', () => {})
+      beforeEach(() => initOrders(mockOrders))
+
+      it('updates inventory stock', async done => {
+        const inventoryItemBeforeUpdate = await db.inventory.find(2)
+        const orderQuantity = 2
+        const updatedOrderDetails = {
+          status: 'IN_PROGRESS',
+        }
+
+        request
+          .put('/orders/3')
+          .send(updatedOrderDetails)
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then(async () => {
+            const inventoryItemAfterUpdate = await db.inventory.find(
+              2,
+            )
+
+            expect(
+              inventoryItemBeforeUpdate.quantity_remaining -
+                orderQuantity,
+            ).toEqual(inventoryItemAfterUpdate.quantity_remaining)
+
+            done()
+          })
+      })
     })
   })
 })

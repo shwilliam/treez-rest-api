@@ -8,6 +8,7 @@ const {
   mockInventory,
   mockID,
 } = require('./utils')
+const {db} = require('../dist/db')
 
 describe('/inventories', () => {
   describe('GET', () => {
@@ -84,21 +85,17 @@ describe('/inventories', () => {
           .send(newItem)
           .expect('Content-Type', /json/)
           .expect(201)
-          .then(res => {
+          .then(async res => {
             const createdID = res.body.id
+            const createdItem = await db.inventory.find(createdID)
 
-            request
-              .get(`/inventories/${createdID}`)
-              .expect('Content-Type', /json/)
-              .expect(
-                200,
-                {
-                  ...newItem,
-                  id: createdID,
-                  price: formatMonetaryDecimal(newItem.price),
-                },
-                done,
-              )
+            expect(createdItem).toEqual({
+              ...newItem,
+              id: createdID,
+              price: formatMonetaryDecimal(newItem.price),
+            })
+
+            done()
           })
       })
     })
@@ -139,8 +136,12 @@ describe('/inventories/:id', () => {
         request
           .delete('/inventories/1')
           .expect(200)
-          .then(() => {
-            request.get('/inventories/1').expect(500, done)
+          .then(async () => {
+            const inventoryItem = await db.inventory.find(1)
+
+            expect(inventoryItem).toBeNull()
+
+            done()
           })
       })
     })
@@ -163,21 +164,16 @@ describe('/inventories/:id', () => {
           .send(updatedItemDetails)
           .expect('Content-Type', /json/)
           .expect(200)
-          .then(() => {
-            request
-              .get('/inventories/1')
-              .expect('Content-Type', /json/)
-              .expect(
-                200,
-                {
-                  ...updatedItemDetails,
-                  id: 1,
-                  price: formatMonetaryDecimal(
-                    updatedItemDetails.price,
-                  ),
-                },
-                done,
-              )
+          .then(async () => {
+            const updatedItem = await db.inventory.find(1)
+
+            expect(updatedItem).toEqual({
+              ...updatedItemDetails,
+              id: 1,
+              price: formatMonetaryDecimal(updatedItemDetails.price),
+            })
+
+            done()
           })
       })
     })
