@@ -3,9 +3,9 @@ import {db} from '../../db'
 
 const deleteOrder = async (req: Request, res: Response): Promise<Response> => {
   try {
-    await db.orders.delete(req.params.id)
+    const deletedOrder = await db.orders.delete(req.params.id)
 
-    return res.json({id : req.params.id})
+    return res.json(deletedOrder)
   } catch (err) {
     return res.status(500).send(err.message)
   }

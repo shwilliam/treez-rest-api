@@ -6,15 +6,15 @@ class Inventory {
     this.db = db
   }
 
-  async findAll(): Promise<IInventory[]> {
+  findAll(): Promise<IInventory[]> {
     return this.db.any('SELECT * FROM inventory ORDER BY id ASC;')
   }
 
-  async find(id: string): Promise<IInventory> {
-    return this.db.one('SELECT * FROM inventory WHERE id = $1;', [id])
+  find(id: string): Promise<IInventory | null> {
+    return this.db.oneOrNone('SELECT * FROM inventory WHERE id = $1;', [id])
   }
 
-  async add(newInventoryItem: IAddInventoryPayload): Promise<IInventory> {
+  add(newInventoryItem: IAddInventoryPayload): Promise<IInventory> {
     const {name, description, price, quantity_remaining} = newInventoryItem
 
     return this.db.one(
@@ -23,7 +23,7 @@ class Inventory {
     )
   }
 
-  async delete(id: string): Promise<null> {
+  delete(id: string): Promise<null> {
     return this.db.none('DELETE FROM inventory WHERE id = $1;', [id])
   }
 

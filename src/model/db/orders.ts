@@ -22,11 +22,14 @@ class Orders {
       [id],
     )
 
-    return orderDetails.length ? ({
-      email: orderDetails[0].email,
-      date: orderDetails[0].date,
-      status: orderDetails[0].status,
-      id: orderDetails[0].order_id,
+    if (!orderDetails || !orderDetails.length) return null
+
+    const {email, date, status, order_id} = orderDetails[0]
+    return ({
+      email,
+      date,
+      status,
+      id: order_id,
       products: orderDetails.map(product => ({
         id: product.id,
         name: product.name,
@@ -34,14 +37,14 @@ class Orders {
         price: product.number,
         quantity: product.quantity,
       }))
-    }) : null
+    })
   }
 
-  async findAll(): Promise<IOrder[]> {
+  findAll(): Promise<IOrder[]> {
     return this.db.any('SELECT * FROM orders;')
   }
 
-  async add({products, email}: IOrderPayload): Promise<IOrder> {
+  add({products, email}: IOrderPayload): Promise<IOrder> {
     return this.db.tx(async t => {
       const newOrder = await t.one('INSERT INTO orders (email) VALUES ($1) RETURNING *;', [email])
 
@@ -66,21 +69,23 @@ class Orders {
     })
   }
 
-  async delete(id: string): Promise<null> {
+  delete(id: string): Promise<null> {
     return this.db.tx(async t => {
       const currentOrder = await t.one('SELECT * from orders WHERE id = $1;', [id])
 
       if (currentOrder.status === 'IN_PROGRESS')
         throw new Error('Cannot delete order with status IN_PROGRESS')
 
-      return t.batch([
+      await t.batch([
         await t.none('DELETE FROM order_quantities WHERE order_id = $1;', [id]),
         await t.none('DELETE FROM orders WHERE id = $1;', [id])
       ])
+
+      return currentOrder
     })
   }
 
-  async replace(id: string, products: TProductOrderPayload): Promise<string> {
+  replace(id: string, products: TProductOrderPayload): Promise<string> {
     return this.db.tx(async t => {
       const currentOrder = await t.any(
         `SELECT * FROM orders
@@ -119,7 +124,7 @@ class Orders {
     })
   }
 
-  async update({id, products, email: newEmail, status: newStatus}: IOrderUpdatePayload): Promise<string> {
+  update({id, products, email: newEmail, status: newStatus}: IOrderUpdatePayload): Promise<string> {
     return this.db.tx(async t => {
       const queries: Promise<any>[] = []
 
