@@ -16,8 +16,8 @@ class Orders {
   async find(id: string): Promise<IOrderSummary | null> {
     const orderDetails = await this.db.any(
       `SELECT * FROM orders
-        INNER JOIN order_quantities ON orders.id = order_quantities.order_id
-        INNER JOIN inventory ON inventory.id = order_quantities.product_id
+        INNER JOIN product_orders ON orders.id = product_orders.order_id
+        INNER JOIN inventory ON inventory.id = product_orders.product_id
         WHERE orders.id = $1;`,
       [id],
     )
@@ -58,7 +58,7 @@ class Orders {
               [product_id, quantity],
             ),
             t.none(
-              `INSERT INTO order_quantities (order_id, product_id, quantity)
+              `INSERT INTO product_orders (order_id, product_id, quantity)
                 VALUES ($1, $2, $3);`,
               [newOrder.id, product_id, quantity],
             ),
@@ -77,7 +77,7 @@ class Orders {
         throw new Error('Cannot delete order with status IN_PROGRESS')
 
       await t.batch([
-        await t.none('DELETE FROM order_quantities WHERE order_id = $1;', [id]),
+        await t.none('DELETE FROM product_orders WHERE order_id = $1;', [id]),
         await t.none('DELETE FROM orders WHERE id = $1;', [id])
       ])
 
@@ -89,8 +89,8 @@ class Orders {
     return this.db.tx(async t => {
       const currentOrder = await t.any(
         `SELECT * FROM orders
-          INNER JOIN order_quantities
-            ON orders.id = order_quantities.order_id
+          INNER JOIN product_orders
+            ON orders.id = product_orders.order_id
           WHERE orders.id = $1;`,
         [id],
       )
@@ -101,7 +101,7 @@ class Orders {
           .map(({product_id, quantity}: IOrderDetails) => (
             t.none('UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1;', [product_id, quantity]))
           ),
-        t.none('DELETE FROM order_quantities WHERE order_id = $1;', [id]),
+        t.none('DELETE FROM product_orders WHERE order_id = $1;', [id]),
       ])
 
       // insert new order details and update inventory quantities
@@ -113,7 +113,7 @@ class Orders {
         ...products
           .map(([product_id, quantity]) => (
             t.none(
-              `INSERT INTO order_quantities (order_id, product_id, quantity)
+              `INSERT INTO product_orders (order_id, product_id, quantity)
                 VALUES ($1, $2, $3);`,
               [id, product_id, quantity],
             )
@@ -130,8 +130,8 @@ class Orders {
 
       const currentOrder = await this.db.any(
         `SELECT * FROM orders
-          INNER JOIN order_quantities
-            ON orders.id = order_quantities.order_id
+          INNER JOIN product_orders
+            ON orders.id = product_orders.order_id
           WHERE orders.id = $1;`,
         [id],
       )

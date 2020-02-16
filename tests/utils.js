@@ -1,7 +1,7 @@
 const {db} = require('../dist/db')
 
 const clearOrders = async () => {
-  await db.none('DELETE FROM order_quantities;')
+  await db.none('DELETE FROM product_orders;')
   return db.none('DELETE FROM orders;')
 }
 
@@ -35,7 +35,7 @@ const initOrders = async orders => {
       Promise.all(
         products.map(([product_id, quantity]) =>
           db.none(
-            `INSERT INTO order_quantities (order_id, product_id, quantity)
+            `INSERT INTO product_orders (order_id, product_id, quantity)
             VALUES ($1, $2, $3);`,
             [id, product_id, quantity],
           ),
