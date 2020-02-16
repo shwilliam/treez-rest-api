@@ -56,7 +56,7 @@ describe('/inventories', () => {
         name: 'Test name',
         description: 'Test desc',
         price: 40.52,
-        quantity: 42,
+        quantity_remaining: 42,
       }
 
       it('returns created item', done => {
@@ -155,7 +155,7 @@ describe('/inventories/:id', () => {
           name: 'New name',
           description: 'New desc',
           price: 99,
-          quantity: 99,
+          quantity_remaining: 99,
         }
 
         request

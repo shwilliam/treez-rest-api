@@ -1,4 +1,4 @@
-import {IInventory} from './Inventory'
+import {IInventory, IInventoryOrder} from './Inventory'
 
 interface IProduct {
   id: string,
@@ -17,6 +17,14 @@ interface IOrderDetails {
   id: string,
   product_id: string,
   quantity: number,
+}
+
+interface IOrderSummary {
+  id: string,
+  products: IInventoryOrder[],
+  email: string,
+  date: Date,
+  status: TStatus,
 }
 
 interface IOrderPayload {
@@ -38,6 +46,7 @@ export {
   IProduct,
   IOrder,
   IOrderDetails,
+  IOrderSummary,
   IOrderPayload,
   TProductOrderPayload,
   IOrderUpdatePayload,

@@ -4,6 +4,7 @@ import {
   IOrderPayload,
   TProductOrderPayload,
   IOrderUpdatePayload,
+  IOrderSummary,
   IOrderDetails,
 } from '../Order'
 
@@ -12,8 +13,28 @@ class Orders {
     this.db = db
   }
 
-  async find(id: string): Promise<IOrder> {
-    return this.db.one('SELECT * FROM orders WHERE id = $1;', [id])
+  async find(id: string): Promise<IOrderSummary | null> {
+    const orderDetails = await this.db.any(
+      `SELECT * FROM orders
+        INNER JOIN order_quantities ON orders.id = order_quantities.order_id
+        INNER JOIN inventory ON inventory.id = order_quantities.product_id
+        WHERE orders.id = $1;`,
+      [id],
+    )
+
+    return orderDetails.length ? ({
+      email: orderDetails[0].email,
+      date: orderDetails[0].date,
+      status: orderDetails[0].status,
+      id: orderDetails[0].order_id,
+      products: orderDetails.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.number,
+        quantity: product.quantity,
+      }))
+    }) : null
   }
 
   async findAll(): Promise<IOrder[]> {
@@ -29,7 +50,7 @@ class Orders {
           .reduce((queries: Promise<any>[], [product_id, quantity]: TProductOrderPayload) => ([
             ...queries,
             t.none(
-              `UPDATE inventory SET quantity = quantity - $2
+              `UPDATE inventory SET quantity_remaining = quantity_remaining - $2
                 WHERE id = $1;`,
               [product_id, quantity],
             ),
@@ -73,7 +94,7 @@ class Orders {
       await t.batch([
         ...currentOrder
           .map(({product_id, quantity}: IOrderDetails) => (
-            t.none('UPDATE inventory SET quantity = quantity + $2 WHERE id = $1;', [product_id, quantity]))
+            t.none('UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1;', [product_id, quantity]))
           ),
         t.none('DELETE FROM order_quantities WHERE order_id = $1;', [id]),
       ])
@@ -82,7 +103,7 @@ class Orders {
       await t.batch([
         ...products
           .map(([product_id, quantity]) => (
-            t.none('UPDATE inventory SET quantity = quantity - $2 WHERE id = $1;', [product_id, quantity]))
+            t.none('UPDATE inventory SET quantity_remaining = quantity_remaining - $2 WHERE id = $1;', [product_id, quantity]))
           ),
         ...products
           .map(([product_id, quantity]) => (
@@ -128,7 +149,7 @@ class Orders {
           // restore inventory quantities
           currentOrder.forEach(({product_id, quantity}) => queries.push(
             this.db.none(
-              'UPDATE inventory SET quantity = quantity + $2 WHERE id = $1',
+              'UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1',
               [product_id, quantity],
             )
           ))
@@ -141,7 +162,7 @@ class Orders {
         await t.batch(
           currentOrder
             .map(({product_id, quantity}) => (
-              t.none('UPDATE inventory SET quantity = quantity - $2 WHERE id = $1;', [product_id, quantity]))
+              t.none('UPDATE inventory SET quantity_remaining = quantity_remaining - $2 WHERE id = $1;', [product_id, quantity]))
             ),
         )
       }

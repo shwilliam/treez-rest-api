@@ -8,6 +8,7 @@ const {
   containsSameElements,
   mockInventory,
   mockOrders,
+  mockOrderProducts,
   mockID,
   mockDate,
 } = require('./utils')
@@ -60,6 +61,7 @@ describe('/orders', () => {
           .expect(res => {
             res.body.id = mockID
             res.body.date = mockDate
+            res.body.products = mockOrderProducts
           })
           .expect(
             201,
@@ -68,6 +70,7 @@ describe('/orders', () => {
               email: newOrder.email,
               date: mockDate,
               status: 'IN_PROGRESS',
+              products: mockOrderProducts,
             },
             done,
           )
@@ -86,6 +89,9 @@ describe('/orders', () => {
             request
               .get(`/orders/${createdID}`)
               .expect('Content-Type', /json/)
+              .expect(res => {
+                res.body.products = mockOrderProducts
+              })
               .expect(
                 200,
                 {
@@ -93,6 +99,7 @@ describe('/orders', () => {
                   email: newOrder.email,
                   date: createdDate,
                   status: 'IN_PROGRESS',
+                  products: mockOrderProducts,
                 },
                 done,
               )
@@ -119,6 +126,7 @@ describe('/orders/:id', () => {
           .expect('Content-Type', /json/)
           .expect(res => {
             res.body.date = mockDate
+            res.body.products = mockOrderProducts
           })
           .expect(
             200,
@@ -127,6 +135,7 @@ describe('/orders/:id', () => {
               email: mockOrders[0].email,
               date: mockDate,
               status: mockOrders[0].status,
+              products: mockOrderProducts,
             },
             done,
           )
@@ -143,7 +152,7 @@ describe('/orders/:id', () => {
           .delete('/orders/1')
           .expect(200)
           .then(() => {
-            request.get('/orders/1').expect(500, done)
+            request.get('/orders/1').expect(200, null, done)
           })
       })
     })
@@ -169,6 +178,7 @@ describe('/orders/:id', () => {
               .expect('Content-Type', /json/)
               .expect(res => {
                 res.body.date = mockDate
+                res.body.products = mockOrderProducts
               })
               .expect(
                 200,
@@ -177,6 +187,7 @@ describe('/orders/:id', () => {
                   email: updatedOrderDetails.email,
                   date: mockDate,
                   status: mockOrders[0].status,
+                  products: mockOrderProducts,
                 },
                 done,
               )

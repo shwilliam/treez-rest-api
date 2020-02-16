@@ -15,11 +15,11 @@ class Inventory {
   }
 
   async add(newInventoryItem: IAddInventoryPayload): Promise<IInventory> {
-    const {name, description, price, quantity} = newInventoryItem
+    const {name, description, price, quantity_remaining} = newInventoryItem
 
     return this.db.one(
-      'INSERT INTO inventory (name, description, price, quantity) VALUES ($1, $2, $3, $4) RETURNING *;',
-      [name, description || '', price, quantity],
+      'INSERT INTO inventory (name, description, price, quantity_remaining) VALUES ($1, $2, $3, $4) RETURNING *;',
+      [name, description || '', price, quantity_remaining],
     )
   }
 
@@ -27,15 +27,15 @@ class Inventory {
     return this.db.none('DELETE FROM inventory WHERE id = $1;', [id])
   }
 
-  async update({id, name, description, price, quantity}: IInventoryUpdatePayload): Promise<string> {
+  async update({id, name, description, price, quantity_remaining}: IInventoryUpdatePayload): Promise<string> {
     await this.db.none(
       `UPDATE inventory SET
         name = COALESCE($2, name),
         description = COALESCE($3, description),
         price = COALESCE($4, price),
-        quantity = COALESCE($5, quantity)
+        quantity_remaining = COALESCE($5, quantity_remaining)
       WHERE id = $1;`,
-      [id, name, description, price, quantity],
+      [id, name, description, price, quantity_remaining],
     )
 
     return id

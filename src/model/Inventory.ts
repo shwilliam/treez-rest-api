@@ -3,6 +3,14 @@ interface IInventory {
   name: string,
   description?: string,
   price: number,
+  quantity_remaining: number,
+}
+
+interface IInventoryOrder {
+  id: string,
+  name: string,
+  description?: string,
+  price: number,
   quantity: number,
 }
 
@@ -11,7 +19,7 @@ interface IAddInventoryPayload {
   name: string,
   description?: string,
   price: number,
-  quantity: number,
+  quantity_remaining: number,
 }
 
 interface IInventoryUpdatePayload {
@@ -19,7 +27,7 @@ interface IInventoryUpdatePayload {
   name?: string,
   description?: string,
   price?: number,
-  quantity?: number,
+  quantity_remaining?: number,
 }
 
-export {IInventory, IAddInventoryPayload, IInventoryUpdatePayload}
+export {IInventory, IInventoryOrder, IAddInventoryPayload, IInventoryUpdatePayload}

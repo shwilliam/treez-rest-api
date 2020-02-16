@@ -9,11 +9,11 @@ const clearInventory = () => db.none('DELETE FROM inventory;')
 
 const initStockedInventory = products =>
   Promise.all(
-    products.map(({id, name, price, description, quantity}) =>
+    products.map(({id, name, price, description, quantity_remaining}) =>
       db.none(
-        `INSERT INTO inventory (id, name, price, description, quantity)
+        `INSERT INTO inventory (id, name, price, description, quantity_remaining)
           VALUES ($1, $2, $3, $4, $5);`,
-        [id, name, price, description, quantity],
+        [id, name, price, description, quantity_remaining],
       ),
     ),
   )
@@ -58,18 +58,16 @@ const mockInventory = [
     name: 'Item 1',
     description: 'Desc',
     price: 20,
-    quantity: 130,
+    quantity_remaining: 130,
   },
   {
     id: 2,
     name: 'Item 2',
     description: 'Desc 2',
     price: 62.5,
-    quantity: 120,
+    quantity_remaining: 120,
   },
 ]
-
-const mockDate = '2020-02-15T02:41:46.168Z'
 
 const mockOrders = [
   {
@@ -89,7 +87,24 @@ const mockOrders = [
   },
 ]
 
+const mockOrderProducts = [
+  {
+    id: 1,
+    order_id: 1,
+    product_id: 1,
+    quantity: 2,
+  },
+  {
+    id: 2,
+    order_id: 1,
+    product_id: 2,
+    quantity: 1,
+  },
+]
+
 const mockID = 'testid'
+
+const mockDate = '2020-02-15T02:41:46.168Z'
 
 module.exports = {
   clearOrders,
@@ -102,5 +117,6 @@ module.exports = {
   mockInventory,
   mockDate,
   mockOrders,
+  mockOrderProducts,
   mockID,
 }
