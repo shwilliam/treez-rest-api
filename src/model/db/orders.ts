@@ -6,6 +6,7 @@ import {
   IOrderUpdatePayload,
   IOrderSummary,
   IOrderDetails,
+  TProductQuantities,
 } from '../Order'
 
 class Orders {
@@ -40,6 +41,16 @@ class Orders {
     })
   }
 
+  findProductOrders(id: string): Promise<IOrderDetails[]> {
+    return this.db.any(
+      `SELECT * FROM orders
+        INNER JOIN product_orders
+          ON orders.id = product_orders.order_id
+        WHERE orders.id = $1;`,
+      [id],
+    )
+  }
+
   findAll(): Promise<IOrder[]> {
     return this.db.any('SELECT * FROM orders;')
   }
@@ -50,13 +61,9 @@ class Orders {
 
       await t.batch(
         JSON.parse(products)
-          .reduce((queries: Promise<any>[], [product_id, quantity]: TProductOrderPayload) => ([
+          .reduce((queries: Promise<any>[], [product_id, quantity]: TProductQuantities) => ([
             ...queries,
-            t.none(
-              `UPDATE inventory SET quantity_remaining = quantity_remaining - $2
-                WHERE id = $1;`,
-              [product_id, quantity],
-            ),
+            this.updateInventoryQuantity(product_id, Number(quantity) * -1),
             t.none(
               `INSERT INTO product_orders (order_id, product_id, quantity)
                 VALUES ($1, $2, $3);`,
@@ -87,20 +94,14 @@ class Orders {
 
   replace(id: string, products: TProductOrderPayload): Promise<string> {
     return this.db.tx(async t => {
-      const currentOrder = await t.any(
-        `SELECT * FROM orders
-          INNER JOIN product_orders
-            ON orders.id = product_orders.order_id
-          WHERE orders.id = $1;`,
-        [id],
-      )
+      const currentOrder = await t.findProductOrders(id)
 
       // remove order quantities and update inventory quantities
       await t.batch([
         ...currentOrder
           .map(({product_id, quantity}: IOrderDetails) => (
-            t.none('UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1;', [product_id, quantity]))
-          ),
+            this.updateInventoryQuantity(product_id, quantity)
+          )),
         t.none('DELETE FROM product_orders WHERE order_id = $1;', [id]),
       ])
 
@@ -108,8 +109,8 @@ class Orders {
       await t.batch([
         ...products
           .map(([product_id, quantity]) => (
-            t.none('UPDATE inventory SET quantity_remaining = quantity_remaining - $2 WHERE id = $1;', [product_id, quantity]))
-          ),
+            this.updateInventoryQuantity(product_id, quantity * -1)
+          )),
         ...products
           .map(([product_id, quantity]) => (
             t.none(
@@ -128,13 +129,7 @@ class Orders {
     return this.db.tx(async t => {
       const queries: Promise<any>[] = []
 
-      const currentOrder = await this.db.any(
-        `SELECT * FROM orders
-          INNER JOIN product_orders
-            ON orders.id = product_orders.order_id
-          WHERE orders.id = $1;`,
-        [id],
-      )
+      const currentOrder = await this.findProductOrders(id)
       const {status: currentStatus} = currentOrder[0]
 
       // update order products
@@ -142,39 +137,46 @@ class Orders {
         if (currentStatus !== 'IN_PROGRESS')
           throw new Error(`Unable to update products on order with status ${currentStatus}`)
 
-        await this.replace(id, products)
+        queries.push(this.replace(id, products))
       }
 
       // update order status
-      if (['CANCELLED', 'COMPLETE'].includes(newStatus)) {
-        if (currentStatus !== 'IN_PROGRESS')
-          throw new Error(`Unable to change status of order with status ${currentStatus}`)
+      if (newStatus) {
+        switch (newStatus) {
+          case 'CANCELLED':
+            if (currentStatus !== 'IN_PROGRESS')
+              throw new Error(`Unable to change status of order with status ${currentStatus}`)
 
-        if (newStatus === 'CANCELLED') {
-          // restore inventory quantities
-          currentOrder.forEach(({product_id, quantity}) => queries.push(
-            this.db.none(
-              'UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1',
-              [product_id, quantity],
-            )
-          ))
+            // restore inventory quantities
+            currentOrder.forEach(({product_id, quantity}) => queries.push(
+              this.updateInventoryQuantity(product_id, quantity)
+            ))
+            break
+
+          case 'COMPLETE':
+            if (currentStatus !== 'IN_PROGRESS')
+              throw new Error(`Unable to change status of order with status ${currentStatus}`)
+            break
+
+          case 'IN_PROGRESS':
+            if (currentStatus !== 'CANCELLED')
+              throw new Error(`Unable to change status of order with status ${currentStatus}`)
+
+            // restore order
+            currentOrder
+              .forEach(({product_id, quantity}) => queries.push(
+                this.updateInventoryQuantity(product_id, quantity * -1)
+              ))
+            break
+
+          default:
+            break
         }
 
-      } else if (newStatus === 'IN_PROGRESS'){ // restore order
-        if (currentStatus !== 'CANCELLED')
-          throw new Error(`Unable to change status of order with status ${currentStatus}`)
-
-        await t.batch(
-          currentOrder
-            .map(({product_id, quantity}) => (
-              t.none('UPDATE inventory SET quantity_remaining = quantity_remaining - $2 WHERE id = $1;', [product_id, quantity]))
-            ),
+        queries.push(
+          this.db.none('UPDATE orders SET status = $2 WHERE id = $1;', [id, newStatus])
         )
       }
-
-      if (newStatus) queries.push(
-        this.db.none('UPDATE orders SET status = $2 WHERE id = $1;', [id, newStatus])
-      )
 
       if (newEmail) queries.push(
         this.db.none('UPDATE orders SET email = $2 WHERE id = $1;', [id, newEmail])
@@ -185,6 +187,14 @@ class Orders {
       return id
     })
   }
+
+  updateInventoryQuantity(id: string, quantity: number): Promise<null> {
+    return this.db.none(
+      'UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1;',
+      [id, quantity],
+    )
+  }
+
 }
 
 export default Orders

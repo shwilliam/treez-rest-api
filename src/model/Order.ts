@@ -17,6 +17,9 @@ interface IOrderDetails {
   id: string,
   product_id: string,
   quantity: number,
+  email: string,
+  date: Date,
+  status: TStatus,
 }
 
 interface IOrderSummary {
@@ -34,13 +37,14 @@ interface IOrderPayload {
 
 interface IOrderUpdatePayload {
   id: string,
-  products: TProductOrderPayload,
-  email: string,
-  status: TStatus
+  products?: TProductOrderPayload,
+  email?: string,
+  status?: TStatus
 }
 
 type TStatus = 'IN_PROGRESS' | 'COMPLETE' | 'CANCELLED'
-type TProductOrderPayload = [string, number][]
+type TProductQuantities = [string, number]
+type TProductOrderPayload = TProductQuantities[]
 
 export {
   IProduct,
@@ -48,6 +52,7 @@ export {
   IOrderDetails,
   IOrderSummary,
   IOrderPayload,
-  TProductOrderPayload,
   IOrderUpdatePayload,
+  TProductOrderPayload,
+  TProductQuantities,
 }

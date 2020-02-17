@@ -40,6 +40,13 @@ class Inventory {
 
     return id
   }
+
+  updateQuantity(id: string, quantity: number): Promise<null> {
+    return this.db.none(
+      'UPDATE inventory SET quantity_remaining = quantity_remaining + $2 WHERE id = $1;',
+      [id, quantity],
+    )
+  }
 }
 
 export default Inventory
