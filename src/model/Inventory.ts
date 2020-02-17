@@ -1,24 +1,21 @@
-interface IInventory {
-  id: string,
+interface IInventoryBase {
   name: string,
   description?: string,
   price: number,
+}
+
+interface IInventory extends IInventoryBase {
+  id: string,
   quantity_remaining: number,
 }
 
-interface IInventoryOrder {
+interface IInventoryOrder extends IInventoryBase {
   id: string,
-  name: string,
-  description?: string,
-  price: number,
   quantity: number,
 }
 
-interface IAddInventoryPayload {
+interface IAddInventoryPayload extends IInventoryBase {
   id?: string,
-  name: string,
-  description?: string,
-  price: number,
   quantity_remaining: number,
 }
 

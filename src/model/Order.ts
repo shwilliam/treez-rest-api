@@ -1,33 +1,23 @@
 import {IInventory, IInventoryOrder} from './Inventory'
 
-interface IProduct {
+interface IOrderBase {
   id: string,
-  quanity: number,
-}
-
-interface IOrder {
-  id: string,
-  products: IInventory[],
   email: string,
   date: Date,
   status: TStatus,
 }
 
-interface IOrderDetails {
-  id: string,
+interface IOrder extends IOrderBase {
+  products: IInventory[],
+}
+
+interface IOrderDetails extends IOrderBase {
   product_id: string,
   quantity: number,
-  email: string,
-  date: Date,
-  status: TStatus,
 }
 
-interface IOrderSummary {
-  id: string,
+interface IOrderSummary extends IOrderBase {
   products: IInventoryOrder[],
-  email: string,
-  date: Date,
-  status: TStatus,
 }
 
 interface IOrderPayload {
@@ -47,7 +37,6 @@ type TProductQuantities = [string, number]
 type TProductOrderPayload = TProductQuantities[]
 
 export {
-  IProduct,
   IOrder,
   IOrderDetails,
   IOrderSummary,
